@@ -3,6 +3,7 @@ import argparse
 import glob
 import os
 import subprocess
+import sys
 import tempfile
 
 from collections import namedtuple
@@ -65,6 +66,9 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', help='Source of existing DICOM data')
     parser.add_argument('--dst', help='Dest. for new DICOM data')
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
     return parser.parse_args()
 
 
