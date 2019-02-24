@@ -10,6 +10,6 @@ docker run --rm ${IMAGE} generate docker -b neurodebian:stretch -p apt \
     --copy . /src/dcm2dcm \
     --miniconda use_env=base conda_install="python=3.6 numpy nomkl" \
         pip_install="nibabel" \
-    --entrypoint "/src/dcm2dcm" \
+    --entrypoint "/src/dcm2dcm/dcm2dcm.py" \
     --run "chmod +x /src/dcm2dcm" \
 > ./Dockerfile
