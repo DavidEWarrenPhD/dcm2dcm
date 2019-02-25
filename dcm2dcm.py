@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import glob
+import logging
 import os
 import subprocess
 import sys
@@ -12,15 +13,20 @@ from os.path import join as opj
 
 def convert_src_to_nifti(src_dir, dst_dir):
     '''Converts the DICOM data in src_dir to NIFTI under dst_dir.'''
-    cmd_str = f'dcm2niix -o {dst_dir} {src_dir}'
+    cmd_str = f'dcm2niix -z y -o {dst_dir} {src_dir}'
     subprocess.run(cmd_str.split())
 
 
 def convert_nifti_to_dicom(src_dir, dst_dir):
     '''Converts the DICOM data in src_dir to NIFTI under dst_dir.'''
-    nifti_paths = glob.glob(opj(src_dir, '*.nii.gz'))
+    nifti_paths = (glob.glob(opj(src_dir, '*.nii.gz')) +
+                   glob.glob(opj(src_dir, '*.nii')))
     for nifti_path in nifti_paths:
-        nifti_bits = decompose_neuro_path(nifti_path)
+        try:
+            nifti_bits = decompose_neuro_path(nifti_path)
+        except ValueError as e:
+            print(e)
+            continue
         cmd_str = (f'nifti2dicom '
                    f'-i {nifti_path} '
                    f'-o {opj(dst_dir, nifti_bits.prefix)} '
@@ -46,6 +52,8 @@ def decompose_neuro_path(path):
                    r'$').format(NEURO_EXTS)
     neuro_regex = re.compile(neuro_restr, re.I)
     match = neuro_regex.match(fn)
+    if match is None:
+        raise ValueError('Not a neuro path.')
     prefix, afspace, ext = [match.groupdict().get(i) for i in
                             'prefix afspace ext'.split()]
     compressed = any([ext.lower().endswith(i) for i in ('.gz', '.mgz')])
@@ -57,7 +65,6 @@ def main(src, dst):
     assert os.path.isdir(src)
     assert os.path.isdir(dst)
     with tempfile.TemporaryDirectory() as tmpd:
-        # tmpd_path = tmpd.name
         convert_src_to_nifti(src, tmpd)
         convert_nifti_to_dicom(tmpd, dst)
 
@@ -66,6 +73,9 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', help='Source of existing DICOM data')
     parser.add_argument('--dst', help='Dest. for new DICOM data')
+    # parser.add_argument('--nifti', help='Dir for intermediate NIFTI files')
+    # parser.add_argument('--keep', help='Keep intermediate files',
+    #                     default=False, action='store_true')
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
